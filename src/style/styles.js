@@ -8,7 +8,18 @@ module.exports = (async, util) => async({
     boxSizing: 'inherit'
   },
 
+  'html, body': {
+    height: '100%',
+    overflow: 'hidden',
+    padding: 0,
+    margin: 0
+  },
+
   body: {
-    fontFamily: 'helvetica, arial'
+    background: '#000',
+    fontFamily: 'helvetica, arial',
+    display: 'flex',
+    'justify-content': 'center',
+    'align-items': 'center'
   }
 });
