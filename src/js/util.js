@@ -6,3 +6,7 @@ export function createArray(n) {
 
   return arr;
 }
+
+export function normalizeNegative(x) {
+  return (x + 1) / 2;
+}
