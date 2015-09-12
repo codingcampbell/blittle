@@ -1,4 +1,5 @@
 import * as util from './util';
+import * as color from './color';
 
 const createCanvas = (width, height) => {
   let canvas = document.createElement('canvas');
@@ -32,45 +33,19 @@ export default class Screen {
   }
 
   setRGBA(x, y, rgba) {
-    return this.setPixel(x, y, (rgba >> 24) & 0xff, (rgba >> 16) & 0xff, (rgba >> 8) & 0xff, rgba & 0xff);
+    return this.setPixel.apply(this, [x, y].concat(color.RGBA(rgba)));
   }
 
-  // Conversion code from https://stackoverflow.com/a/9493060
+  setRGB(x, y, rgb) {
+    return this.setPixel.apply(this, [x, y].concat(color.RGB(rgb)));
+  }
+
   setHSLA(x, y, h, s, l, a) {
-    if (typeof a !== 'number') {
-      a = 1;
-    }
+    return this.setPixel.apply(this, [x, y].concat(color.HSLA(h, s, l, a)));
+  }
 
-    if (s === 0) {
-      return this.setPixel(x, y, l, l, l, a);
-    }
-
-
-    let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    let p = 2 * l - q;
-
-    let convert = t => {
-      t += t < 0 ? 1 : (t > 1 ? -1 : 0);
-      if (t < 1/6) {
-        return p + (q - p) * 6 * t;
-      }
-
-      if (t < 1/2) {
-        return q;
-      }
-
-      if (t < 2/3) {
-        return p + (q - p) * (2/3 - t) * 6;
-      }
-
-      return p;
-    };
-
-    let r = convert(h + 1/3);
-    let g = convert(h);
-    let b = convert(h - 1/3);
-
-    return this.setPixel(x, y, r * 255, g * 255, b * 255, a * 255);
+  setHSL(x, y, h, s, l) {
+    return this.setPixel.apply(this, [x, y].concat(color.HSL(h, s, l)));
   }
 
   setPixel(x, y, r, g, b, a) {
@@ -84,10 +59,21 @@ export default class Screen {
   getPixel(x, y) {
     const index = (y * this.width + x) * 4;
     return [
-      this.pixels.data[index + 0], 
-      this.pixels.data[index + 1], 
-      this.pixels.data[index + 2], 
+      this.pixels.data[index + 0],
+      this.pixels.data[index + 1],
+      this.pixels.data[index + 2],
       this.pixels.data[index + 3],
+    ];
+  }
+
+  // Same as getPixel, except alpha is mapped from 0-255 to 0-1 (for use in rgba() CSS-style syntax)
+  getCanvasPixel(x, y) {
+    const index = (y * this.width + x) * 4;
+    return [
+      this.pixels.data[index + 0],
+      this.pixels.data[index + 1],
+      this.pixels.data[index + 2],
+      this.pixels.data[index + 3] / 255,
     ];
   }
 
@@ -112,7 +98,7 @@ export default class Screen {
 
     for (y = 0; y < this.height; y += 1) {
       for (x = 0; x < this.width; x += 1) {
-        this.ctx.fillStyle = 'rgba(' + this.getPixel(x, y).join(',') + ')';
+        this.ctx.fillStyle = 'rgba(' + this.getCanvasPixel(x, y).join(',') + ')';
         this.ctx.fillRect(Math.floor(x * this.scale + x * this.padding), Math.floor(y * this.scale + y * this.padding), this.scale, this.scale);
       }
     }
