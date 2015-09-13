@@ -34,11 +34,14 @@ const _centerRect = function(screen, rect) {
   return rect;
 };
 
-const _fillRect = function(colors, rect) {
-  var  x, y, rx = rect.x || 0, ry = rect.y || 0, tx = this.translation.x, ty = this.translation.y;
+const _fillRect = function(colors, rect, warp) {
+  var  x, y, rx = rect.x || 0, ry = rect.y || 0, tx = this.translation.x, ty = this.translation.y, sx = 0;
   for (y = 0; y < rect.height; y += 1) {
     for (x = 0; x < rect.width; x += 1) {
-      this.screen.setPixel(Math.floor(tx + rx + x), Math.floor(ty + ry + y), colors[0], colors[1], colors[2], colors[3]);
+      if (warp) {
+        sx = Math.sin(Date.now() * 0.01 + (ry + y)) * warp;
+      }
+      this.screen.setPixel(Math.floor(sx + tx + rx + x), Math.floor(ty + ry + y), colors[0], colors[1], colors[2], colors[3]);
     }
   }
 }
@@ -69,6 +72,8 @@ const _getCollision = function(rect1, rect2) {
 };
 
 const _rainbowColor = time => color.HSL(time * 0.002 % 1, 0.75, 0.5);
+
+const _easeOut = t => (2 - t) * t;
 
 const _spawnParticles = function(rect, time) {
   var x, y, particles = [], rainbow = _rainbowColor(time);
@@ -150,6 +155,7 @@ export default class Breakout {
     this.timeBuffer = 0;
     this.screen = screen;
     this.particles = [];
+    this.shakeTime = 0;
     this.shakes = [];
     this.translation = { x: 0, y: 0 };
     this.paddle = _centerRect(this.screen, {
@@ -163,6 +169,7 @@ export default class Breakout {
 
   reset() {
     this.bricks = _createBrickGrid(this.screen, 0, 10, 8, 3, 10, 4, 3);
+    this.bricksDestroyed = 0;
     this.resetBall();
   }
 
@@ -250,6 +257,8 @@ export default class Breakout {
       if (brick.hits === 0) {
         this.particles = this.particles.concat(_spawnParticles(brick, time));
         this.shakes = _createShakes(15, 3, time);
+        this.shakeTime = time;
+        this.bricksDestroyed += 1;
       }
 
       this.ball.vx = Math.abs(this.ball.vx) * (collision.x < 0 ? -1 : 1);
@@ -274,7 +283,7 @@ export default class Breakout {
         height: this.ball.height,
         time: time,
         color: rainbow
-      }].concat(this.tail.filter(link => time - link.time < delta * 32));
+      }].concat(this.tail.filter(link => time - link.time < delta * (this.bricksDestroyed + 1) * 2));
     }
   }
 
@@ -291,22 +300,31 @@ export default class Breakout {
 
   draw(time) {
     var rainbow = _rainbowColor(time);
+    var shakeWarp = 0;
+    if (!this.shakeTime || time - this.shakeTime > 1000) {
+      this.shakeTime = 0;
+    } else {
+      shakeWarp = (1 - _easeOut((time - this.shakeTime) / 1000)) * 2;
+    }
 
     // Clear
     _fillRect.call(this, color.RGB(0x000000), this.screen);
 
     // Ball tail
-    for (let link of this.tail) {
-      _fillRect.call(this, link.color, link);
+    for (let link in this.tail) {
+      if (link < 1) {
+        continue;
+      }
+      _fillRect.call(this, this.tail[link].color, this.tail[link], 2);
     }
 
     // Bricks
     for (let brick of this.bricks) {
-      _fillRect.call(this, brick.hits === 1 ? rainbow : color.RGB(0x0000ff), brick);
+      _fillRect.call(this, brick.hits === 1 ? rainbow : color.RGB(0x0000ff), brick, shakeWarp);
     }
 
     // Paddle
-    _fillRect.call(this, color.RGB(0xffffff), this.paddle);
+    _fillRect.call(this, color.RGB(0xffffff), this.paddle, shakeWarp);
 
     // Ball
     _fillRect.call(this, rainbow, this.ball);
