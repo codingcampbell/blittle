@@ -3,6 +3,10 @@ export default class Huerizon {
     this.screen = screen;
   }
 
+  onTouch(x, y) {}
+
+  onMove(x, y) {}
+
   update(time) {
     let x, y;
     let tx = Math.sin(time * 0.0002) * 20;

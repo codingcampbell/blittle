@@ -1,7 +1,7 @@
 {
-  "name": "pico",
+  "name": "blittle",
   "version": "0.0.1",
-  "description": "tiny games",
+  "description": "tiny 128x96 experiments",
   "scripts": {
     "dev": "node tasks dev",
     "compile": "node tasks compile",

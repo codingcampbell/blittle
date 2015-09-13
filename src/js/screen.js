@@ -39,7 +39,6 @@ export default class Screen {
         this.setRGBA(x, y, 0x000000ff);
       }
     }
-    this.lastUpdate = null;
   }
 
   appendTo(dom) {
@@ -121,6 +120,5 @@ export default class Screen {
     }
 
     this.ctx.putImageData(this.scaledPixels, 0, 0);
-    this.ctx.putImageData(this.pixels, 0, 0);
   }
 }

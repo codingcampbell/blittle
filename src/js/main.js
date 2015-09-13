@@ -1,14 +1,31 @@
 import Screen from 'screen';
 import Breakout from 'demo/breakout';
+import Huerizon from 'demo/huerizon';
+import Huegrid from 'demo/huegrid';
 
-let screen = new Screen(128, 96);
+const screen = new Screen(128, 96);
 screen.setScale(3);
 screen.setPadding(3);
-screen.appendTo(document.body);
+screen.appendTo(document.getElementById('canvas-container'));
 
-let demo = new Breakout(screen);
+var currentDemo = 0;
+const demos = [Breakout, Huerizon, Huegrid].map(demo => new demo(screen));
+const thumbnails = demos.map((_, index) => {
+  var canvas = document.createElement('canvas');
+  canvas.width = screen.width;
+  canvas.height = screen.height;
+  document.getElementById('thumbnails').appendChild(canvas);
+
+  canvas.addEventListener('click', e => {
+    currentDemo = index;
+    e.preventDefault();
+  });
+
+  return canvas.getContext('2d');
+});
 
 var lastUpdate = null;
+var firstRender = true;
 var update = function(time) {
   requestAnimationFrame(update);
   if (!time) {
@@ -20,28 +37,34 @@ var update = function(time) {
     return;
   }
 
-  demo.update(time, time - lastUpdate);
+  if (firstRender) {
+    firstRender = false;
+    for (let demoIndex in demos) {
+      demos[demoIndex].update(time, time - lastUpdate);
+      thumbnails[demoIndex].putImageData(screen.pixels, 0, 0);
+    }
+  } else {
+    demos[currentDemo].update(time, time - lastUpdate);
+    thumbnails[currentDemo].putImageData(screen.pixels, 0, 0);
+    screen.render();
+  }
+
   lastUpdate = time;
-  screen.render();
 }
 
-var translateEvent = function(e) {
+const translateEvent = function(e) {
   return [
     Math.floor((e.offsetX / screen.canvas.width) * screen.width),
     Math.floor((e.offsetY / screen.canvas.height) * screen.height)
   ];
 }
 
-if (demo.onTouch) {
-  screen.canvas.addEventListener('mousedown', function(e) {
-    demo.onTouch.apply(demo, translateEvent(e));
-  });
-}
+screen.canvas.addEventListener('mousedown', function(e) {
+  demos[currentDemo].onTouch.apply(demos[currentDemo], translateEvent(e));
+});
 
-if (demo.onMove) {
-  screen.canvas.addEventListener('mousemove', function(e) {
-    demo.onMove.apply(demo, translateEvent(e));
-  });
-}
+screen.canvas.addEventListener('mousemove', function(e) {
+  demos[currentDemo].onMove.apply(demos[currentDemo], translateEvent(e));
+});
 
 update();
