@@ -25,4 +25,23 @@ var update = function(time) {
   screen.render();
 }
 
+var translateEvent = function(e) {
+  return [
+    Math.floor((e.offsetX / screen.canvas.width) * screen.width),
+    Math.floor((e.offsetY / screen.canvas.height) * screen.height)
+  ];
+}
+
+if (demo.onTouch) {
+  screen.canvas.addEventListener('mousedown', function(e) {
+    demo.onTouch.apply(demo, translateEvent(e));
+  });
+}
+
+if (demo.onMove) {
+  screen.canvas.addEventListener('mousemove', function(e) {
+    demo.onMove.apply(demo, translateEvent(e));
+  });
+}
+
 update();
