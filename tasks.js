@@ -53,7 +53,9 @@ tasks.javascript = function(opts) {
     b = watchify(b);
   }
 
-  b.transform(babelify);
+  b.transform(babelify.configure({
+    optional: ['runtime']
+  }));
 
   if (opts.minify) {
     b.transform({
