@@ -1,5 +1,13 @@
 import * as color from 'color';
 
+const brickColors = [
+  color.RGB(0xff0000),
+  color.RGB(0xff00ff),
+  color.RGB(0x00ff00),
+  color.RGB(0x00ffff),
+  color.RGB(0xffff00)
+];
+
 const _createBrickGrid = function(screen, offsetX, offsetY, gridWidth, gridHeight, brickWidth, brickHeight, margin) {
   var x, y, grid = [];
 
@@ -169,6 +177,7 @@ export default class Breakout {
 
   reset() {
     this.bricks = _createBrickGrid(this.screen, 0, 10, 8, 3, 10, 4, 3);
+    this.brickColor = brickColors[Math.floor(Math.random() * brickColors.length)];
     this.bricksDestroyed = 0;
     this.resetBall();
   }
@@ -308,7 +317,7 @@ export default class Breakout {
     }
 
     // Clear
-    _fillRect.call(this, color.RGB(0x000000), this.screen);
+    _fillRect.call(this, shakeWarp ? color.HSL(shakeWarp / 2, 1, 0.25) : color.RGB(0x444444), this.screen);
 
     // Ball tail
     for (let link in this.tail) {
@@ -320,7 +329,7 @@ export default class Breakout {
 
     // Bricks
     for (let brick of this.bricks) {
-      _fillRect.call(this, brick.hits === 1 ? rainbow : color.RGB(0x0000ff), brick, shakeWarp);
+      _fillRect.call(this, brick.hits === 1 ? rainbow : this.brickColor, brick, shakeWarp);
     }
 
     // Paddle
