@@ -157,6 +157,20 @@ const states = {
 const stepHz = 16;
 const ballXSpeed = 0.05;
 const ballYSpeed = 0.05;
+const maxBalls = 3;
+
+const _createBall = (x, y) => ({
+  x,
+  y,
+  vx: ballXSpeed * 0.75 * Math.sign(0.5 - Math.random()),
+  vy: ballYSpeed,
+  width: 4,
+  height: 4,
+  dead: false,
+  collisions: 0,
+  tail: []
+});
+
 
 export default class Breakout {
   constructor(screen) {
@@ -184,15 +198,7 @@ export default class Breakout {
 
   resetBall() {
     this.state = states.paused;
-    this.tail = [];
-    this.ball = _centerRect(this.screen, {
-      x: null,
-      y: null,
-      vx: ballXSpeed * 0.75 * Math.sign(0.5 - Math.random()),
-      vy: ballYSpeed,
-      width: 4,
-      height: 4
-    });
+    this.balls = [_centerRect(this.screen, _createBall(null, null))];
   }
 
   onTouch(x, y) {
@@ -221,78 +227,101 @@ export default class Breakout {
     var rainbow = _rainbowColor(time);
 
     // Move ball
-    this.ball.x += delta * this.ball.vx;
-    this.ball.y += delta * this.ball.vy;
+    var ballDied = false;
+    for (let ball of this.balls) {
+      ball.x += delta * ball.vx;
+      ball.y += delta * ball.vy;
 
-    // Detect horizontal bounce
-    if (this.ball.vx > 0 && this.ball.x >= this.screen.width - this.ball.width) {
-      this.ball.x = this.screen.width - this.ball.width;
-      this.ball.vx *= -1;
-    }
-    if (this.ball.vx < 0 && this.ball.x <= 0) {
-      this.ball.x = 0;
-      this.ball.vx *= -1;
-    }
+      // Detect horizontal bounce
+      if (ball.vx > 0 && ball.x >= this.screen.width - ball.width) {
+        ball.x = this.screen.width - ball.width;
+        ball.vx *= -1;
+      }
+      if (ball.vx < 0 && ball.x <= 0) {
+        ball.x = 0;
+        ball.vx *= -1;
+      }
 
-    // Detect vertical bounce (from top)
-    if (this.ball.vy < 0 && this.ball.y <= 0) {
-      this.ball.y = 0;
-      this.ball.vy *= -1;
-    }
+      // Detect vertical bounce (from top)
+      if (ball.vy < 0 && ball.y <= 0) {
+        ball.y = 0;
+        ball.vy *= -1;
+      }
 
-    // Detect paddle collision
-    var collision = this.ball.vy > 0 && _getCollision(this.ball, this.paddle);
-    if (collision) {
-      this.ball.y = this.paddle.y - this.ball.height + this.ball.vy * delta;
-      this.ball.vy *= -1;
-      this.ball.vx = collision.x * ballYSpeed;
-    }
+      // Detect paddle collision
+      var collision = ball.vy > 0 && _getCollision(ball, this.paddle);
+      if (collision) {
+        ball.collisions += 1;
+        ball.y = this.paddle.y - ball.height + ball.vy * delta;
+        ball.vy *= -1;
+        ball.vx = collision.x * ballYSpeed;
+      }
 
-    // Detect ball out of bounds
-    if (this.ball.vy > 0 && this.ball.y >= this.screen.height - this.ball.height) {
-      this.resetBall();
-    }
-
-    // Detect brick collision
-    var brickCollided = false;
-    for (let brick of this.bricks) {
-      collision = _getCollision(this.ball, brick);
-      if (!collision) {
+      // Detect ball out of bounds
+      if (ball.vy > 0 && ball.y >= this.screen.height - ball.height) {
+        ball.dead = true;
+        ballDied = true;
         continue;
       }
 
-      brickCollided = true;
-      brick.hits -= 1;
-      if (brick.hits === 0) {
-        this.particles = this.particles.concat(_spawnParticles(brick, time));
-        this.shakes = _createShakes(15, 3, time);
-        this.shakeTime = time;
-        this.bricksDestroyed += 1;
+      // Spawn tail every 2 frames
+      if (!ball.tail.length || time - ball.tail[0].time >= delta * 2) {
+        ball.tail = [{
+          x: ball.x,
+          y: ball.y,
+          width: ball.width,
+          height: ball.height,
+          time: time,
+          color: rainbow
+        }].concat(ball.tail.filter(link => time - link.time < delta * (this.bricksDestroyed + 1) * 2));
       }
 
-      this.ball.vx = Math.abs(this.ball.vx) * (collision.x < 0 ? -1 : 1);
-      this.ball.vy = Math.abs(this.ball.vy) * collision.y;
-    }
+      // If ball hasn't at least hit the paddle yet,
+      // we don't check it for brick collisions
+      if (!ball.collisions) {
+        continue;
+      }
 
-    // Clean up dead bricks
-    if (brickCollided) {
-      this.bricks = this.bricks.filter(brick => brick.hits > 0);
-      // 0 bricks left = reset the game
-      if (this.bricks.length === 0) {
-        this.reset();
+      // Detect brick collision
+      var brickCollided = false;
+      for (let brick of this.bricks) {
+        collision = _getCollision(ball, brick);
+        if (!collision) {
+          continue;
+        }
+
+        brickCollided = true;
+        brick.hits -= 1;
+        if (brick.hits === 0) {
+          this.particles = this.particles.concat(_spawnParticles(brick, time));
+          this.shakes = _createShakes(15, 3, time);
+          this.shakeTime = time;
+          this.bricksDestroyed += 1;
+
+          if (this.balls.length < maxBalls) {
+            this.balls.push(_createBall(brick.x, brick.y));
+          }
+        }
+
+        ball.vx = Math.abs(ball.vx) * (collision.x < 0 ? -1 : 1);
+        ball.vy = Math.abs(ball.vy) * collision.y;
+      }
+
+      // Clean up dead bricks
+      if (brickCollided) {
+        this.bricks = this.bricks.filter(brick => brick.hits > 0);
+        // 0 bricks left = reset the game
+        if (this.bricks.length === 0) {
+          this.reset();
+        }
       }
     }
 
-    // Spawn tail every 2 frames
-    if (!this.tail.length || time - this.tail[0].time >= delta * 2) {
-      this.tail = [{
-        x: this.ball.x,
-        y: this.ball.y,
-        width: this.ball.width,
-        height: this.ball.height,
-        time: time,
-        color: rainbow
-      }].concat(this.tail.filter(link => time - link.time < delta * (this.bricksDestroyed + 1) * 2));
+    if (ballDied) {
+      this.balls = this.balls.filter(ball => !ball.dead);
+      if (!this.balls.length) {
+        this.resetBall();
+      }
     }
   }
 
@@ -317,15 +346,7 @@ export default class Breakout {
     }
 
     // Clear
-    _fillRect.call(this, shakeWarp ? color.HSL(shakeWarp / 2, 1, 0.25) : color.RGB(0x444444), this.screen);
-
-    // Ball tail
-    for (let link in this.tail) {
-      if (link < 1) {
-        continue;
-      }
-      _fillRect.call(this, this.tail[link].color, this.tail[link], 2);
-    }
+    _fillRect.call(this, shakeWarp ? color.HSL(shakeWarp / 2, 1, 0.25) : color.RGB(0x222222), this.screen);
 
     // Bricks
     for (let brick of this.bricks) {
@@ -335,8 +356,20 @@ export default class Breakout {
     // Paddle
     _fillRect.call(this, color.RGB(0xffffff), this.paddle, shakeWarp);
 
+    // Ball tails
+    for (let ball of this.balls) {
+      for (let link in ball.tail) {
+        if (link < 1) {
+          continue;
+        }
+        _fillRect.call(this, ball.tail[link].color, ball.tail[link], 2);
+      }
+    }
+
     // Ball
-    _fillRect.call(this, rainbow, this.ball);
+    for (let ball of this.balls) {
+      _fillRect.call(this, rainbow, ball);
+    }
 
     // Particles
     for (let particle of this.particles) {
