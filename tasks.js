@@ -61,6 +61,9 @@ tasks.javascript = function(opts) {
     b.transform({
       global: true,
       mangle: true,
+      mangle: {
+        toplevel: true
+      },
       compress: {
         unsafe: true,
         drop_debugger: true,
@@ -69,15 +72,25 @@ tasks.javascript = function(opts) {
     }, 'uglifyify');
   }
 
+  var builtMessage = function(time) {
+    console.log(config.jsBundle + ' built in ' + time + ' ms');
+  };
+
   var update = function() {
-    b.bundle()
-    .on('error', errorHandler)
-    .pipe(fs.createWriteStream(config.jsBundle));
+    var writeStream = fs.createWriteStream(config.jsBundle);
+    b.bundle().on('error', errorHandler).pipe(writeStream);
+
+    if (!opts.watch) {
+      var time = Date.now();
+      writeStream.on('close', function() {
+        builtMessage(Date.now() - time);
+      });
+    }
   };
 
   if (opts.watch) {
     b.on('update', update);
-    b.on('time', function (time) { console.log(config.jsBundle + ' built in ' + time + ' ms'); });
+    b.on('time', builtMessage);
   }
 
   b.require(config.jsMain, { entry: true });
