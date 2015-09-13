@@ -49,6 +49,10 @@ export default class Screen {
   }
 
   setPixel(x, y, r, g, b, a) {
+    if (x < 0 || x >= this.width  || y < 0 || y >= this.height) {
+      return;
+    }
+
     const index = (y * this.width + x) * 4;
     this.pixels.data[index + 0] = Math.floor(r);
     this.pixels.data[index + 1] = Math.floor(g);

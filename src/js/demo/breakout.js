@@ -70,6 +70,47 @@ const _getCollision = function(rect1, rect2) {
 
 const _rainbowColor = time => color.HSL(time * 0.002 % 1, 0.75, 0.5);
 
+const _spawnParticles = function(rect, time) {
+  var x, y, particles = [], rainbow = _rainbowColor(time);
+  for (y = 0; y < rect.height; y += 1) {
+    for (x = 0; x < rect.width; x += 1) {
+      particles.push({
+        x: rect.x + x,
+        y: rect.y + y,
+        width: 1,
+        height: 1,
+        vx: Math.random(0.01, 0.1) * Math.sign(0.5 - Math.random()),
+        vy: -Math.random(0.01, 0.1),
+        color: rainbow,
+        expiration: time + 1000 + Math.random() * 1000
+      });
+    }
+  }
+
+  return particles;
+};
+
+const _updateParticles = function(particles, time, delta) {
+  var particleExpired = false;
+
+  for (let p of particles) {
+    if (time >= p.expiration) {
+      particleExpired = true;
+      continue;
+    }
+
+    p.x += p.vx * delta * 0.05;
+    p.y += p.vy * delta * 0.05;
+    p.vy += 0.002 * delta;
+  }
+
+  if (!particleExpired) {
+    return particles;
+  }
+
+  return particles.filter(particle => time < particle.expiration);
+};
+
 const states = {
   paused: 0,
   playing: 1
@@ -83,6 +124,7 @@ export default class Breakout {
   constructor(screen) {
     this.timeBuffer = 0;
     this.screen = screen;
+    this.particles = [];
     this.paddle = _centerRect(this.screen, {
       x: null,
       y: this.screen.height - 10,
@@ -121,6 +163,10 @@ export default class Breakout {
   }
 
   step(time, delta) {
+    if (this.particles.length) {
+      this.particles = _updateParticles(this.particles, time, delta);
+    }
+
     if (this.state === states.paused) {
       return;
     }
@@ -170,6 +216,10 @@ export default class Breakout {
 
       brickCollided = true;
       brick.hits -= 1;
+      if (brick.hits === 0) {
+        this.particles = this.particles.concat(_spawnParticles(brick, time));
+      }
+
       this.ball.vx = Math.abs(this.ball.vx) * (collision.x < 0 ? -1 : 1);
       this.ball.vy = Math.abs(this.ball.vy) * collision.y;
     }
@@ -228,5 +278,10 @@ export default class Breakout {
 
     // Ball
     _fillRect(rainbow, this.screen, this.ball);
+
+    // Particles
+    for (let particle of this.particles) {
+      _fillRect(rainbow, this.screen, particle);
+    }
   }
 }
