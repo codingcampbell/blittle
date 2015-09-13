@@ -8,6 +8,19 @@ const createCanvas = (width, height) => {
   return canvas;
 };
 
+const _fillRect = function(x, y, w, h, scanline, color, imageData) {
+  var rx, ry, index;
+  for (ry = 0; ry < h; ry += 1) {
+    for (rx = 0; rx < w; rx += 1) {
+      index = ((y + ry) * scanline + (x + rx)) * 4;
+      imageData.data[index] = color[0];
+      imageData.data[index + 1] = color[1];
+      imageData.data[index + 2] = color[2];
+      imageData.data[index + 3] = color[3];
+    }
+  }
+}
+
 export default class Screen {
   constructor(width, height) {
     this.width = width || 128;
@@ -19,6 +32,7 @@ export default class Screen {
     this.ctx = this.canvas.getContext('2d');
 
     this.pixels = this.ctx.createImageData(this.width, this.height);
+    this.scaledPixels = this.ctx.createImageData(this.width, this.height);
 
     for (let y = 0; y < this.height; y += 1) {
       for (let x = 0; x < this.width; x += 1) {
@@ -94,19 +108,19 @@ export default class Screen {
   resize() {
     this.canvas.width = Math.floor(this.width * this.scale + this.padding * (this.width - 1));
     this.canvas.height = Math.floor(this.height * this.scale + this.padding * (this.height - 1));
+    this.scaledPixels = this.ctx.createImageData(this.canvas.width, this.canvas.height);
   }
 
   render() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    let y, x;
+    let y, x, rx, ry;
 
     for (y = 0; y < this.height; y += 1) {
       for (x = 0; x < this.width; x += 1) {
-        this.ctx.fillStyle = 'rgba(' + this.getCanvasPixel(x, y).join(',') + ')';
-        this.ctx.fillRect(Math.floor(x * this.scale + x * this.padding), Math.floor(y * this.scale + y * this.padding), this.scale, this.scale);
+        _fillRect(Math.floor(x * this.scale + x * this.padding), Math.floor(y * this.scale + y * this.padding), this.scale, this.scale, this.canvas.width, this.getPixel(x, y), this.scaledPixels);
       }
     }
 
+    this.ctx.putImageData(this.scaledPixels, 0, 0);
     this.ctx.putImageData(this.pixels, 0, 0);
   }
 }
