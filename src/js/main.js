@@ -8,9 +8,20 @@ screen.appendTo(document.body);
 
 let demo = new Huegrid(screen);
 
-var update = function() {
+var lastUpdate = null;
+var update = function(time) {
   requestAnimationFrame(update);
-  demo.update(Date.now());
+  if (!time) {
+    return;
+  }
+
+  if (lastUpdate === null) {
+    lastUpdate = time;
+    return;
+  }
+
+  demo.update(time, time - lastUpdate);
+  lastUpdate = time;
   screen.render();
 }
 
