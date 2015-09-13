@@ -1,12 +1,12 @@
 import Screen from 'screen';
-import Huegrid from 'demo/huegrid';
+import Breakout from 'demo/breakout';
 
 let screen = new Screen(128, 96);
 screen.setScale(3);
 screen.setPadding(3);
 screen.appendTo(document.body);
 
-let demo = new Huegrid(screen);
+let demo = new Breakout(screen);
 
 var lastUpdate = null;
 var update = function(time) {
