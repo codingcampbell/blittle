@@ -337,7 +337,7 @@ export default class Breakout {
     }
 
     // Clear
-    _fillRect.call(this, shakeWarp ? color.HSL(shakeWarp / 2, 1, 0.25) : color.RGB(0x222222), this.screen);
+    _fillRect.call(this, shakeWarp ? color.HSL(shakeWarp / 2, 0.5, 0.25) : color.RGB(0x222222), this.screen);
 
     // Bricks
     for (let brick of this.bricks) {
