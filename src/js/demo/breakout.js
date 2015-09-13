@@ -83,7 +83,7 @@ const _rainbowColor = time => color.HSL(time * 0.002 % 1, 0.75, 0.5);
 
 const _easeOut = t => (2 - t) * t;
 
-const _spawnParticles = function(rect, time) {
+const _spawnParticles = function(rect, vxMult, vyMult, gravity, minLife, maxLife, color, time) {
   var x, y, particles = [], rainbow = _rainbowColor(time);
   for (y = 0; y < rect.height; y += 1) {
     for (x = 0; x < rect.width; x += 1) {
@@ -92,10 +92,11 @@ const _spawnParticles = function(rect, time) {
         y: rect.y + y,
         width: 1,
         height: 1,
-        vx: Math.random(0.01, 0.1) * Math.sign(0.5 - Math.random()),
-        vy: -Math.random(0.01, 0.1),
-        color: rainbow,
-        expiration: time + 1000 + Math.random() * 1000
+        vx: vxMult * Math.random(0.01, 0.1) * Math.sign(0.5 - Math.random()),
+        vy: vyMult * -Math.random(0.01, 0.1),
+        gravity,
+        color,
+        expiration: time + minLife + Math.floor(Math.random() * (maxLife - minLife))
       });
     }
   }
@@ -114,7 +115,7 @@ const _updateParticles = function(particles, time, delta) {
 
     p.x += p.vx * delta * 0.05;
     p.y += p.vy * delta * 0.05;
-    p.vy += 0.002 * delta;
+    p.vy += p.gravity * delta;
   }
 
   if (!particleExpired) {
@@ -167,8 +168,7 @@ const _createBall = (x, y) => ({
   width: 4,
   height: 4,
   dead: false,
-  collisions: 0,
-  tail: []
+  collisions: 0
 });
 
 
@@ -264,17 +264,8 @@ export default class Breakout {
         continue;
       }
 
-      // Spawn tail every 2 frames
-      if (!ball.tail.length || time - ball.tail[0].time >= delta * 2) {
-        ball.tail = [{
-          x: ball.x,
-          y: ball.y,
-          width: ball.width,
-          height: ball.height,
-          time: time,
-          color: rainbow
-        }].concat(ball.tail.filter(link => time - link.time < delta * (this.bricksDestroyed + 1) * 2));
-      }
+      // Spawn tail particles
+      this.particles = this.particles.concat(_spawnParticles(ball, 0, 0, 0, 30 + 10 * this.bricksDestroyed, 90 + 10 * this.bricksDestroyed, rainbow, time));
 
       // If ball hasn't at least hit the paddle yet,
       // we don't check it for brick collisions
@@ -293,7 +284,7 @@ export default class Breakout {
         brickCollided = true;
         brick.hits -= 1;
         if (brick.hits === 0) {
-          this.particles = this.particles.concat(_spawnParticles(brick, time));
+          this.particles = this.particles.concat(_spawnParticles(brick, 1, 1, 0.002, 1000, 2000, null, time));
           this.shakes = _createShakes(15, 3, time);
           this.shakeTime = time;
           this.bricksDestroyed += 1;
@@ -356,24 +347,14 @@ export default class Breakout {
     // Paddle
     _fillRect.call(this, color.RGB(0xffffff), this.paddle, shakeWarp);
 
-    // Ball tails
-    for (let ball of this.balls) {
-      for (let link in ball.tail) {
-        if (link < 1) {
-          continue;
-        }
-        _fillRect.call(this, ball.tail[link].color, ball.tail[link], 2);
-      }
+    // Particles
+    for (let particle of this.particles) {
+      _fillRect.call(this, particle.color || rainbow, particle);
     }
 
     // Ball
     for (let ball of this.balls) {
       _fillRect.call(this, rainbow, ball);
-    }
-
-    // Particles
-    for (let particle of this.particles) {
-      _fillRect.call(this, rainbow, particle);
     }
   }
 }
