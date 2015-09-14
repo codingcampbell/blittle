@@ -54,6 +54,10 @@ module.exports = (async, util) => async({
     margin: 0
   },
 
+  a: {
+    color: '#4285f4'
+  },
+
   '#content': {
     background: '#000',
     display: displayFlex(),
